@@ -221,6 +221,296 @@ AEs perform consistently better than SSs (even with the use of a one-layer AE).
       - Saturated regime of STDP
 - AE learn more complex features (edges and blobs can be observed but include larger range of color or gray levels).
 
-
 ## 5.5. Result analysis and properties of the networks
+
 ### 5.5.1. On-center/off-center coding
+
+*Investigates the impact of on/off-center coding on classification*
+
+This coding impacts the visual features learned bu STDP but does it impact the accuracy ?
+
+**Two systems are compared, each w/ and w/o preprocessing**
+1. AE (same protocole) 
+2. SVM performing directly on images
+
+- Using on/off-center coding decreases the accuracy of the classification. 
+  - Confirms this coding decreases the performance of SNNs. Extracting edges with DoG selects only a subrange of spatial frequencies.
+- filtered Color AE is on par with grayscale
+- filtered color SVM is worse than grayscale
+- On-center/off-center coding can't handle color images
+  - Edges are already effectively represented in grayscale
+  - Additionnal information of color is in uniform image regions
+- SOTA unsupervised SNN are only investigated on MNIST, which is just composed of edges
+- Must find a way to process raw RGB but it is not working now (see above)
+
+### 5.5.2. Sparsity
+- Compare AE and SNN in term of sparsity
+- SNNs are sparser than AE
+  - SNNs relies on lateral inhibition --> leading to versy sparve activations of the features.
+- Sparsity is generally correlated with accuracy
+- Too much sparsity is not good for AE
+
+Is sparseness is an issue for SNNs ?
+- Experiments where lateral inhibition is disabled is run
+  - SParsity decreased and accuracy too.
+  - Sparsity is desirable for good representation but excessive sparsity is detrimental for accuracy
+
+### 5.5.3. Coherence
+*Comparison between AE and SNN in term of incoherence quality*
+
+Incoherence is a measure of quality of the learned features : one feature should not be obtained by a linear combination of other features.
+
+- Incoherence low
+  - features are redundant
+  - Can negatively impact accuracy
+  - Redundant features can overweight other features
+
+- **Comparison**
+  - STDP-based SNNs product more coherent features
+    - Can explain their lower performance
+    - Smaller variety of filters
+  - Pairwise coherence between two SNN features is higher
+    - SNNs can learn almost identical features
+  - **Conclusion :** WTA inhibition fails to prevent neurons to react to the same patterns. Must design more effective inhibition mechanisms.
+
+### 5.5.4. Objective function
+*Tries to identify the criteria that are optimized by STDP rules in order to understand the related learning process. Does STDP aims to optimize the reconstruction criteria ? If not, this shows that STDP is not suited for reconstruction*
+
+- Objective function of STDP is not explicitly expressed
+- Objective function of AE is minimizing reconstruction error
+
+**--> Are features learned by STDP are suited for reconstruction ?**
+
+- How to check that ?
+  - Reconstruct the test image from the visual features
+    - In AE, this is the decoder's job
+    - In SNNs, patches are reconstructed as a linear combination of the filters weighted by their activations for the current sample. Images are reconstructed from patches by averaging the values of overlapping patches at each location
+- Reconstruction error is much higher for SNNs than AEs
+    - STDP does not allow reconstruction
+    - Edges are reconstructed with less details than orgininal image
+      - Can be explained by learned features that are much more elementary and sparse (no complex patterns)
+    - Global illumination degraded
+- Explanation of results
+  - SNN only process DoG-filtered images
+  - Reonstruction error can be much lower if able to process raw images directly 
+
+**Conclusion :** 
+- SNNs learn to reconstruct images (although this is not explicit). 
+- Minimizing reconstruction error is not sufficient to provide meaningful representations.
+  - Recent AE include additional criteria to ensure good representation
+  - Must work on these criteria in STDP
+- STDP can behave similarly to ICA or PCA (dimension reduction)
+
+
+### 5.5.5. Using Whitening Transformations with Spiking Neural Networks
+
+- On-off filtering is an unsatisfactory solution
+  - Due to information loss (essentially the edges are used)
+- Solution : **whitening**
+  - Centered, normalized and decorrelated data
+  - Showed improved results in traditionnal methods
+- Whitened data converted into spikes does'nt allow to learn effective features
+  - So it shows very low accuracy
+- Apply whitening transformation is computationally expensive (and not easily implementable on neuromorphic architectures)
+- Solution with a kernel etc... (TODO : work presented by Tirilly to read !)
+
+### 5.6. Conclusion
+- STDP-based SNNs unable to deal with RGB images naturally. Need for preprocessing
+- Common on-center/off-center image coding usedi in SNNs result in an information loss (only edges are taken into account)
+- WTA inhibition results in overly sparse features and does not prevent neurons from learning the same features in practice
+- STDP-based learning rules produce features that enables reconstruction but this is not explicitly optimized for this. Qualty of reconstruction is harmed by the model (preprocessing, etc)
+
+Whitening is a solution to replace on/off filtering. But need to provide whitening-like mechanisms that can be used in neuromorphic architectures.
+
+# Chapter 6. Training Multi-layer SNNs with STDP and Threshold Adaptation
+*Extends previous mechanisms to allow learning with multi-layered SNNs*
+
+Contributions of chap. 6
+- Threshold adaptation mechanism
+- Protocol to train multi-layer network
+- Experimentation to evaluate the impacts of
+  - Threshold adaptation
+  - Inhibition mechanism
+  - STDP rule
+- Test the combination of multiple networks trained with =/= parameters to improve the classification rate
+
+## 6.1. Network architecture
+*Describes the general details of the designed SNN*
+
+- Composed of Feed-Forward layers.
+- IF neurons are used (reduce the number of params compared to LIF). 
+- on/off filtering preprocessing
+- Grayscale images used
+- Temporal coding to convert from images to spikes
+- Types of layers
+  - Convolution
+  - Pooling
+    - Synaptic weightand threshold are 1
+    - A pooling neuron directly fires a spike when it receives a spike from its receptive field
+      - Mimics max pooling
+  - Fully-connected
+
+## 6.2. Training multi-layered Spiking Neural Networks
+*Describes the model*
+- Same mechanisms used as in the previous chapter
+- No delay used in the network
+  - For simplification
+  - Increase parallelism
+  - Reduce parameters number
+  - But delay may play a major role in the learning of temporal patterns
+
+### 6.2.1. Threshold adaptation rule
+*Extends the threshold adaptation rule*
+
+- Reuse threshold adaptation rule of [Secion 5.2.1](#521-neuron-threshold-adaptation).
+- Add new parameter that limits the minimum value that the threshold can take.
+  - Forces the neurons to integrate a minimum umber of spikes
+  - Reinforces the connections
+  - Useful to ensure that neurons learn effective patterns
+- Remove WTA inhibition during the inference stage
+  - WTA inhibition reduces the spiking activity and, in practice, does not prevent from learning redundant patterns.
+  - Investigate soft inhibition
+    - Uses inhibition spikes (reduces the membrane voltage of other neurons by a constant)
+
+
+### 6.2.2. Network output
+*Offers a spike-to-value conversion function to interpret the output of the network*
+
+The new method :
+- Takes $t_{expected}$ into account
+- Latency coding 
+  - Early output spike = high value
+
+
+### 6.2.3. Training
+*Describes the protocol used to train multi-layered SNNs*
+
+Convolution requires to perform non-local operations and to use non-local memory since they use shared weights.
+
+To reduce the cost of global communication needed by convolutions, a specific protocol is used :
+- One ayer is trained at a time (from the 1st layer to the last)
+- During the training of a convolution layer, only one column is activated to discard the usage of inter-column communications.
+  - Necessary since pooling layers require the same filters in adjacent columns
+- Once the layer is trained, its parameters (weights and thresholds) are fixed and are copied onto the other columns of the layer.
+
+## 6.3. Results
+### 6.3.1. Experimental protocol
+- Adapted protocol of [Section 5.4](#541-experimental-protocol)
+- For each trained layer, the training set is processed $n_{epoche}$ times
+- Learning rate decay
+  - Converge to a stable state
+- After training, training and test sets are processed by the network to convert all the samples into their output representation
+- Must produce a feature vector 
+  - If output has multiple columns, sum-pooling is applied
+- SVM classifier
+- Classification rate is averaged over 10 runs
+- Sparsity of output vector is computed with the equation in [Section 5.5.2](#552-sparsity)
+
+### 6.3.2. MNIST
+#### Threshold target time
+
+- Impact of the parameter $t_{expected}$ studied.
+  - Directly impact learned filters and classification perfs
+    - Low values lead to very local patterns
+    - Large values lead to more global patterns
+  - Large value makes integrate a large number of spikes
+    - Better accuracy
+  - Very late $t_{expected}$ is harmful though
+    - Latest spikes are not useful for classification
+  - Equation 5.3 is disabled lead to homeostais lost
+    - Lower accuracy
+  - Different $t_{expected}$ across the layers is bad
+    - Neurons on prev layer are trained to fire at a defined $t_{expected}$
+      - If next layer has a lower $t_{expected}$, it misses some spikes of the previous layer
+      - If next layer has a higher $t_{expected}$ it integrates spikes which arise too late ==> the patterns is not similar to those recognized by the input neurons
+  - With a little difference of $t_{expected}$ between layers, the performance remain stable
+    - Noise resistant
+  - Best results are done with a very little offset
+    - Seems to reinforce resistance to the noise without integrating unrelated spikes
+  - **Conclusion :**
+    - Use a single value for $t_{expected}$ is enough for a multi-layered SNN
+
+#### Inhibition
+*Show the impact of inhibition policies*
+
+Three inhibition policies are compared
+1.  WTA
+2.  Soft inhibition
+3.  No inhibition
+
+Observations :
+- Increasing the hardness of inhibition during inference decreases the accuracy
+- The effect of inibition is accuentuated after each layer
+  - Impacts sparsity and recongition rate n the FC layer
+  - Effect visible with soft inhibition but maximal in WTA
+  - Sparsity of FC layer is 1 and the accuracy is only 63%
+- Higher level of activity helps to learn better rep
+
+#### STDP rule
+
+Three STDP rule compared :
+1. Additive STDP
+2. Multiplicative STDP
+3. Biological STDP
+
+- Additive STDP :
+  - Baseline perf of 96%
+  - Relatively high level of sparsity
+  - Saturation effect = binary weights (close to 0 or 1)
+- Multiplicative STDP
+  - Reduces saturation thanks to param $\beta$
+    - Big value of $\beta$ greatly decreases number of binary weights
+    - Best perf is 99.22%
+  - Biological STDP
+    - Best of 98.47%
+
+- Filters learned by biological STDP look different than the others
+- Mult & add STDP rules never learn patterns that overlap on the on and off channels
+- Bio STDP :
+  - Leads to filters with reinforced connection on the two channels (red & green)
+- Filters learned by add & multi STDP lead to identifiable digits
+- Bio-STDP leads to filters that are less clear.
+  - See figure 6.5
+  - The non-linearity brought by biological STDP allows learning more complex features
+
+#### Multiple Target Timestamp Networks
+*Investigation of networks that contain several groups of neuron with different $t_{expected}$*
+
+- Representations learned with != $t_{expected}$ can obtain != patterns
+  - can be useful to the classifier
+- Protocol :
+  - $n$ networks are trained independantly with a given $t_{expected}$
+  - Concatenate the output features of each network to create a big feature vector $g$
+- Using multiple targets improve the classification perf
+- Network reaches a recognition rate of 98.6% (better than existing methods)
+- Explaination
+  - Combining different $t_{expected}$ allows detecting more varied patterns
+
+### 6.3.3. Faces/Motorbikes
+Use the model in Faces/Motorbikes dataset to see if the model performs well in more realistic images.
+
+**Protocol :**
+- Extract two classes from Caltech-101 (faces and motorbikes)
+- Resize to 250x160px
+- Convert into grayscale
+- Training set = 474 samples
+- Test set = 759 sample 
+- Similar results of the other SNN of SOTA
+
+
+## 6.4. Discussion
+Convolution in SNNs is an issue for multi-layered SNNs. Convolution columns are trained independantly but necessary to copy the weight and threshold values to the other columns to mimics the weight sharing mechanism.
+
+- Fully hardware-implementable SNN using bio-inspired classifiers is unescapable
+- Reward STDP : reinforcement learning STDP to make multilayered SNNs working with Spiking classifier
+- $t_{expected}$ is a parameter with strong impact on the classif perf
+  - Interesting to introduce an auto-adaptable version of this parameter so that neurons can find by themselves the best timing for firing
+
+## 6.5. Conclusion
+- Previous multi-layered SNNs require exhaustive search to optimize params
+- THreshold adaptation mechanism uses a single parameter for all layers and allows varied patterns
+- Removing inhibition during inference step helps to reduce sparsity of model activity which leads to an improvement of perf
+- Bio-STDP rule helps improving the network perf by introducing non-linearity
+
+
+# Chapter 7. Conclusion and future work
