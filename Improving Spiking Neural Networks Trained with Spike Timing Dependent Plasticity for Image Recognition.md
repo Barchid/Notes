@@ -514,3 +514,120 @@ Convolution in SNNs is an issue for multi-layered SNNs. Convolution columns are 
 
 
 # Chapter 7. Conclusion and future work
+## 7.1. Conclusion
+- Limitation of SNN = poor perf compared to deep learning
+- SNNs can't be used for complex cv tasks
+- Work of the thesis
+  - Improve classification tasks for SNN
+  - Focus on STDP
+  - Must be compatible with neuromorphic hardware
+  - Multi-layered SNNs
+- **First contribution**
+  - Dev of SNN simulators 
+  - N2S3
+    - = Akka simulator
+    - Easy to change to make quick tests
+    - Too heavy to simulate large networks
+    - Synchronization bottleneck
+  - CSNNS
+    - Efficient for IF neurons w/ temporal coding
+- **Second contribution** : Frequency loss problem
+  - Prevent the use of multi-layer SNN
+  - Activity across layers drops drastically
+  - Mechanism to deal with it
+    - Target Frequency Threshold (TFT)
+      - Threshold adaptation mechanism
+      - Train the neuron to reach desired output frequency
+    - Binary coding
+      - Convert images into spike trains in order to prevent the loss of frequency
+    - Mirrored STDP 
+      - STDP rule that exploit binary coding to avoid FLP
+  - Results :
+    - Avoid FLP and maintain good classification score
+    - Binary coding loses information on the conversion process
+- **Third contribution** :
+  - Threshold adaptation rule to allow STDP to learn patterns on samples converted with latency coding
+  - Test behaviour of SNNs with RGB images
+    - Adapt on/off filtering policy (used in grayscale) for RGB images
+  - Comparison with sparse AE
+    - Sparsity,accuracy, filter coherence, reconstruction error
+  - Results
+    - WTA inhibition lead to inefficient representations
+    - On/Off filtering = loss of information = perf decrease
+  - Whitening
+    - Does not retain a specific frequency
+    - Good results
+- **Fourth contribution**
+  - Set up multi-layered SNN trained with STDP
+  - Adaptation of previous designed Threshold adaptation rule for better control
+  - Protocol to train multi-layered SNN
+  - Test of mechanisms :
+    - STDP rule
+      - bio-STDP better than multiplicative & additive STDP
+      - Non-linearity of bio-STDP
+    - Inhibition system
+      - Removing the inhibition after training allows to reduce the sparsity and increase accuracy
+    - Threshold adaptation
+      - All thresholds can be optimized with a single parameter $t_{expected}$ & it can control the type of pattern learned by the neurons
+
+
+## 7.2. Future work
+Three ideas to continue :
+- Improve simulation of SNNs
+- Enhance the perf of spiking models
+- Make models fully compatible with hardware implementation
+
+### 7.2.1.
+- To bridge the gap between SNN and ANN, we need to deal with SOTA datasets (ImageNet, COCO, etc).
+- Processing datasets like that means big-sized networks
+  - Simulators must be able to handle big networks in a decent amount of time
+- Computations must be parallelized
+  - Apply same instructin on multiple data (SIMD)
+  - or simultaneously executing different operations (MIMD)
+- SIMD is not possible for SNN because of spatial and temporal sparsity
+  - SIMD makes all the data updated at the same time
+- Works in progress to make SNN simulation possible on GPU
+- MIMD use
+  - Challenge is the synchronization between the // units
+  - units must be temporally coherent
+- N2S3 does'nt work
+  - Inefficient to simulate large networks
+  - Main bottleneck is the global synchronizer
+
+### 7.2.2. Improving the learning in siking neural networks
+Mechanisms must e studied further to improve perf of these models
+
+- Work of spike frequency must be continued
+- What's necessary
+  - Maintain sufficient activity
+  - more work on inhibition systems
+    - Prevent from learning same patterns
+    - BUT let enough spikes pass trhough
+  - Better preprocessing than on/off filtering
+    - Whitening
+  - Improve STDP
+    - Add something other than forward connections 
+
+### 7.2.3. Hardware implementation of Spiking Neural Networks
+Multi-layered SNNs trained with STDP not fully available on neuromo hw.
+- These models must be compatible with dedicated architectures in order to take advantage of their energy efficiency
+
+Three major mechanisms not implemented in HW :
+1. Pre-processing
+2. Shared filters in convolution layers
+3. Classifier
+
+- Pooling layers are useful
+  - Reduce dimension data
+  - Position invariance improved
+  - Difficult to copy weight of filters
+- Classifier problems
+  - Supervised STDP : teach signal to force neuron to learn desired patterns
+  - Forcing output neurons to spike
+    - Reinforce good connections
+  - Anti-STDP
+    - Force non-correct output neurons to not fire
+      - Can't prove if 
+  - Reward STP
+    - Modulate each synaptic weight update according to a reward factor
+      - Must find a way to propagate reward in spikes (as for BP)
