@@ -1,5 +1,211 @@
 # Pierre Falez thesis notes
 
+# Chapter 1 : Introduction, context and motivations
+- ANN's problems :
+  - Needs huge amount of data to generalize
+  - Can't adapt to new classes easily
+    - Need to retrain when adding new class
+  - Huge energy consumption
+- Hardware problem
+  -   classical architecture = Von Neumann 
+      -   Synchrone
+      -   Memory & computation units are separated
+-   Hardware solutions 
+      -   Neuromorphic architectures
+          -   Mode of operation inspired from the brain
+
+## 1.1. Neuromorphic Hardware
+Digital or analog neuromorphic hardware :
+- Digital approach :
+  - Means simulated models
+  - Noiseless
+  - Good scale up ability
+  - SpiNNaker, Loihi, TrueNorth
+- FPGA 
+  - Shorter design and fabrication 
+  - Interfacing with host computer or another FPGA
+  - Digital neuro architecture
+- Analog hardware
+  - Noisy **but** is even good for learning with SNN
+  - Compact
+  - ultra low-power
+  - Less flexibility
+- FPPA
+  - Analog equiv of FPGA
+    - Fast design & cost
+  - Only small networks available now
+- Hybrid digital-analog
+
+## 1.2. Neuromorphic constraints
+*Describes the constraints of neuromorphic architectures*
+
+- Locality of memory and computations
+  - Must use a local learning rule ==> STDP
+- Type of communication inside network
+  - Communicate with small packets or with spikes
+  - Fixed connections between neurons or define a limited connection number
+  - Connecting neurons from different part of the network
+
+## 1.3. Motivations
+1. Using STDP to perform classification
+2. Multi-layered SNN trained with STDP
+3. Perform with more complex images dataset
+
+
+
+# Chapter 2 : Background
+- ANN behave like a mathematical function : takes input, calculation then output
+  - Perfectly synchrone + numerical values
+- SNN communicates through spikes that are asynchronous
+  - No numerical values, only spikes
+
+Integrate & fire model :
+- Good generalization
+- Consider a neuron as an RC circuit.
+- IF, LIF
+- IF 
+  - Fires after threshold then v of membrane to v_rest
+- LIF
+  - Adds the leak (when the neuron is not excited, the membrane potential goes back to the v_rest)
+  - More complex ones
+- Izhikevich
+  - More complex
+  - Simple and able to reproduce many firing modes
+- Hodkin-Huxley
+  - Models neuron by reproducing behavior of ions channels.
+
+### 2.2.3. Neural Coding
+Use functions to translate input/output into spike trains --> depends on the neural coding
+
+#### Frequency coding
+- High value = more spikes (more frequent)
+- Observed in many areas of the brain
+- Popular
+- Good conversion function is Poisson process
+- Limitations
+  - Large number of spikes needed to integrate well
+  - Latency introduced by this need of large number of spikes
+- Image processing
+  - exposition of image $t_{exposition}$
+  - $t_{pause}$ time where no spikes are generated
+
+#### Temporal coding
+- Information is directly carried in the timing of each spike.
+- Observed in biology
+- One spike = one value
+- Latency coding 
+  - Type of temporal coding
+  - early spike = high value
+- Rank-order coding
+  - The order of arrival of spikes is more important than their timing
+- More info & fewer spikes
+- Latency issue is reduced
+- Netork more sensitive to noise
+  - A time lag = misrepresented value
+
+#### Population coding
+  - Several neurons for one value
+  - Improve the encoding representation
+  - Hardly scalable
+  - Use in higher areas of the visual cortex
+  - reduce the noise of each neuron
+
+#### Phase coding
+- In biological studies : presence of oscillations in brain 
+- Timing of spikes against background oscillations to code info
+
+
+### 2.2.4. Synapses
+- Synapse = weight between two neurons
+- Hebbian principle 
+  - "Neurons that fire together, wire together"
+- STdp
+  - Increase weight when $t_{pre} <= t_{post}$
+  - else decrease weight
+
+
+### 2.2.5. Inhibition
+- 80% neurons = excitatory
+- 20% are inhibitory
+- Increase sparsity of activity (prevent from firing)
+- WTA
+  - One neuron can fire at once
+
+### 2.2.6. Homeostasis
+- prevent from only one neuron fires far more than the others
+
+#### Leaky adaptive threshold
+- Ensure homeostasis
+- Showed that it doesn't work in practice
+- Increase threshold when firing 
+- Decrease threshold when not firing
+
+#### Intrinsic plasticity
+- Neurons adjust their excitability according to their activity
+- Observed in bio
+
+#### Synapse scaling
+- Scale the weight of the synapses
+- Global scaling 
+  - Not really bio plausible
+- Local scaling !
+
+#### BCM
+Moving threshold to regulate the application of potentiation & depression according to the post-synaptic activity
+
+#### Short-term synaptic fatigue
+- Observed in biology
+- Prevent synaptic connections
+
+## 2.3. Image recognition in SNN
+
+### 2.3.1. Pre-processing
+DoG (inspired by retina)
+
+### 2.3.2. ANN 2 SNN
+- Train ANN & then converting into SNN
+  - Training does not benefit from SNN's advantages
+- Objective : find a conversion than minimize the error between activities of both models
+
+#### ANN conversion
+- Train an ANN then transform it into an SNN
+- ReLU 2 LIF etc...
+
+#### Back-prop' for SNN
+- Train an SNN directly by adapting the BP of ANN
+
+#### Local training
+- Unsupervised & local in time and space for neurons
+- STDP, etc.
+- Variations of STDP learning rule (multiplicative, power-law, etc)
+
+
+#### Evolutionary algorithms
+Use an evolutionary algorithm to adapt the synaptic weights. Costly & just used in tiny networks
+
+## 2.4. Software simulation
+
+### 2.4.1. Clock-driven vs Event-driven simulation
+- Two types : event-driven & clock-driven
+- Clock-driven :
+  - Simultaneously update everything at every tick of a clock
+  - Easier to code & adaapted to usage of GPU
+  - high clock frequency = high computational cost
+  - Low clock freq = low precision
+- Event-driven 
+  - Works more like hardware
+  - Concurrent components activated by incoming signals
+  - Can be deployed on multiple computers
+- Neuromorphic simulators
+  - Biology as accurate as possible
+  - Only few neurons can be simulated with it
+
+- What work on what ?
+  - Everything on CPU
+  - some support GPU (clock driven)
+  - some support FPGA
+
+
 # Chapter 4 : Frequency loss problem
 
 The objective here is to design multi-layered SNNs in order to perform more complex tasks. Since the information in SNNs are transmitted thanks to spikes, it is necessary that the spiking activity remains high between neurons.  However having such SNNs can't be possible because of the **frequency loss problem**.
