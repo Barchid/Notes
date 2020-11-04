@@ -119,7 +119,7 @@ Use functions to translate input/output into spike trains --> depends on the neu
 - Synapse = weight between two neurons
 - Hebbian principle 
   - "Neurons that fire together, wire together"
-- STdp
+- STDP
   - Increase weight when $t_{pre} <= t_{post}$
   - else decrease weight
 
